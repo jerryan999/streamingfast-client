@@ -93,7 +93,7 @@ func newStream(endpoint string) (stream pbfirehose.StreamClient, client dfuse.Cl
 func launchStream(ctx context.Context, config streamConfig, blkFactory protocolBlockFactory, toRef protoToRef) error {
 	nextStatus := time.Now().Add(statusFrequency)
 	cursor := config.cursor
-	lastBlockRef := sf.EmptyBlockRef
+	lastBlockRef := sf.BlockRefEmpty
 
 	zlog.Info("starting stream",
 		zap.Stringer("range", config.brange),

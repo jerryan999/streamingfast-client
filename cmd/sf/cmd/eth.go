@@ -6,12 +6,12 @@ import (
 	"strings"
 
 	"github.com/streamingfast/eth-go"
+	sf "github.com/streamingfast/streamingfast-client"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	sf "github.com/streamingfast/streamingfast-client"
-	pbcodec "github.com/streamingfast/streamingfast-client/pb/sf/ethereum/codec/v1"
 	pbtransform "github.com/streamingfast/streamingfast-client/pb/sf/ethereum/transform/v1"
+	pbcodec "github.com/streamingfast/streamingfast-client/pb/sf/ethereum/type/v2"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
@@ -192,7 +192,7 @@ func lightBlockTransform() (*anypb.Any, error) {
 	return anypb.New(transform)
 }
 
-func basicLogFilter(addrs []eth.Address, sigs []eth.Hash) *pbtransform.LogFilter {
+func basicLogFilter(addrs []eth.Address, sigs []eth.Hash) *pbtransform.CombinedFilter {
 	var addrBytes [][]byte
 	var sigsBytes [][]byte
 
@@ -206,9 +206,12 @@ func basicLogFilter(addrs []eth.Address, sigs []eth.Hash) *pbtransform.LogFilter
 		sigsBytes = append(sigsBytes, b)
 	}
 
-	return &pbtransform.LogFilter{
+	f := &pbtransform.LogFilter{
 		Addresses:       addrBytes,
 		EventSignatures: sigsBytes,
+	}
+	return &pbtransform.CombinedFilter{
+		LogFilters: []*pbtransform.LogFilter{f},
 	}
 }
 
@@ -231,7 +234,7 @@ func parseSingleLogFilter(addrFilters []string, sigFilters []string) (*anypb.Any
 
 func parseMultiLogFilter(in []string) (*anypb.Any, error) {
 
-	mf := &pbtransform.MultiLogFilter{}
+	mf := &pbtransform.CombinedFilter{}
 
 	for _, filter := range in {
 		parts := strings.Split(filter, ":")
@@ -253,7 +256,7 @@ func parseMultiLogFilter(in []string) (*anypb.Any, error) {
 			}
 		}
 
-		mf.LogFilters = append(mf.LogFilters, basicLogFilter(addrs, sigs))
+		mf.LogFilters = append(mf.LogFilters, basicLogFilter(addrs, sigs).LogFilters...)
 	}
 
 	t, err := anypb.New(mf)
@@ -305,7 +308,7 @@ func parseMultiCallToFilter(in []string) (*anypb.Any, error) {
 			}
 		}
 
-		mf.CallFilters = append(mf.CallFilters, basicCallToFilter(addrs, sigs))
+		mf.CallFilters = append(mf.CallFilters, basicCallToFilter(addrs, sigs).CallFilters...)
 	}
 
 	t, err := anypb.New(mf)
@@ -316,7 +319,7 @@ func parseMultiCallToFilter(in []string) (*anypb.Any, error) {
 
 }
 
-func basicCallToFilter(addrs []eth.Address, sigs []eth.Hash) *pbtransform.CallToFilter {
+func basicCallToFilter(addrs []eth.Address, sigs []eth.Hash) *pbtransform.CombinedFilter {
 	var addrBytes [][]byte
 	var sigsBytes [][]byte
 
@@ -330,8 +333,11 @@ func basicCallToFilter(addrs []eth.Address, sigs []eth.Hash) *pbtransform.CallTo
 		sigsBytes = append(sigsBytes, b)
 	}
 
-	return &pbtransform.CallToFilter{
+	x := &pbtransform.CallToFilter{
 		Addresses:  addrBytes,
 		Signatures: sigsBytes,
+	}
+	return &pbtransform.CombinedFilter{
+		CallFilters: []*pbtransform.CallToFilter{x},
 	}
 }
