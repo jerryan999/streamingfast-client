@@ -4,15 +4,16 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/go-redis/redis"
 	"github.com/paulbellamy/ratecounter"
 	"github.com/streamingfast/jsonpb"
 	pbfirehose "github.com/streamingfast/pbgo/sf/firehose/v1"
 	sf "github.com/streamingfast/streamingfast-client"
+	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
@@ -120,27 +121,40 @@ func (b BlockRange) String() string {
 	return fmt.Sprintf("%d - %d", b.Start, b.End)
 }
 
-func blockWriter(bRange BlockRange, flagWrite string) (io.Writer, func(), error) {
+type RedisListWriter struct {
+	client *redis.Client
+	key    string
+}
+
+func (r *RedisListWriter) Write(p []byte) (n int, err error) {
+	// ignore empty new line data
+	if len(p) < 5 {
+		return 0, nil
+	}
+	v, err := r.client.RPush(r.key, string(p)).Result()
+	return int(v), err
+}
+
+func blockWriter(bRange BlockRange, flagWrite, redisHost, redisPassword string, redisDB int) (io.Writer, func(), error) {
 	if strings.TrimSpace(flagWrite) == "" {
 		return nil, func() {}, nil
 	}
 
-	out := strings.Replace(strings.TrimSpace(flagWrite), "{range}", strings.ReplaceAll(bRange.String(), " ", ""), 1)
-	if out == "-" {
+	if flagWrite == "-" {
 		return os.Stdout, func() {}, nil
 	}
 
-	dir := filepath.Dir(out)
-	err := os.MkdirAll(dir, os.ModePerm)
-	if err != nil {
-		return nil, func() {}, fmt.Errorf("unable to create directories %q", dir)
+	zlog.Info("Redis Sink Parameters", zap.String("host", redisHost), zap.String("password", redisPassword), zap.Int("db", redisDB), zap.String("key", flagWrite))
+	client := &RedisListWriter{
+		client: redis.NewClient(&redis.Options{
+			Addr:     redisHost,
+			Password: redisPassword, // no password set
+			DB:       redisDB,
+		}),
+		key: flagWrite,
 	}
 
-	file, err := os.Create(out)
-	if err != nil {
-		return nil, func() {}, fmt.Errorf("unable to create file %q", out)
-	}
-	return file, func() { file.Close() }, nil
+	return client, func() {}, nil
 }
 
 var endOfLine = []byte("\n")

@@ -39,7 +39,10 @@ func solSfCmdE(cmd *cobra.Command, args []string) error {
 	startCursor := viper.GetString("global-start-cursor")
 	endpoint := viper.GetString("sol-cmd-endpoint")
 	testnet := viper.GetBool("sol-cmd-testnet")
-	outputFlag := viper.GetString("global-output")
+	outputFlag := viper.GetString("global-output-key")
+	redisHost := viper.GetString("global-redis-host")
+	redisPassword := viper.GetString("global-redis-password")
+	redisDB := viper.GetInt("global-redis-db")
 
 	inputs, err := checkArgs(startCursor, args)
 	if err != nil {
@@ -53,7 +56,7 @@ func solSfCmdE(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("unable to resolve endpoint")
 	}
 
-	writer, closer, err := blockWriter(inputs.Range, outputFlag)
+	writer, closer, err := blockWriter(inputs.Range, outputFlag, redisHost, redisPassword, redisDB)
 	if err != nil {
 		return fmt.Errorf("unable to setup writer: %w", err)
 	}
