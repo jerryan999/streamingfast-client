@@ -2,11 +2,13 @@ package cmd
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strings"
 
 	"github.com/streamingfast/eth-go"
 	sf "github.com/streamingfast/streamingfast-client"
+	"gopkg.in/yaml.v2"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -67,6 +69,29 @@ func ethSfRunE(cmd *cobra.Command, args []string) error {
 	redisHost := viper.GetString("global-redis-host")
 	redisPassword := viper.GetString("global-redis-password")
 	redisDB := viper.GetInt("global-redis-db")
+	yamlEnable := viper.GetBool("global-yaml-enable")
+
+	network := "eth"
+	switch {
+	case bscNetwork:
+		endpoint = "bsc.streamingfast.io:443"
+		network = "bsc"
+	case polygonNetwork:
+		endpoint = "polygon.streamingfast.io:443"
+		network = "polygon"
+	case hecoNetwork:
+		endpoint = "heco.streamingfast.io:443"
+		network = "heco"
+	case fantomNetwork:
+		endpoint = "fantom.streamingfast.io:443"
+		network = "fantom"
+	case xdaiNetwork:
+		endpoint = "xdai.streamingfast.io:443"
+		network = "xdai"
+	}
+	if endpoint == "" {
+		return fmt.Errorf("unable to resolve endpoint")
+	}
 
 	inputs, err := checkArgs(startCursor, args)
 	if err != nil {
@@ -77,28 +102,6 @@ func ethSfRunE(cmd *cobra.Command, args []string) error {
 	if !noMoreThanOneTrue(bscNetwork, polygonNetwork, hecoNetwork, fantomNetwork, xdaiNetwork) {
 		return fmt.Errorf("cannot set more than one network flag (ex: --polygon, --bsc)")
 	}
-
-	switch {
-	case bscNetwork:
-		endpoint = "bsc.streamingfast.io:443"
-	case polygonNetwork:
-		endpoint = "polygon.streamingfast.io:443"
-	case hecoNetwork:
-		endpoint = "heco.streamingfast.io:443"
-	case fantomNetwork:
-		endpoint = "fantom.streamingfast.io:443"
-	case xdaiNetwork:
-		endpoint = "xdai.streamingfast.io:443"
-	}
-	if endpoint == "" {
-		return fmt.Errorf("unable to resolve endpoint")
-	}
-
-	writer, closer, err := blockWriter(inputs.Range, outputFlag, redisHost, redisPassword, redisDB)
-	if err != nil {
-		return fmt.Errorf("unable to setup writer: %w", err)
-	}
-	defer closer()
 
 	transforms := []*anypb.Any{}
 
@@ -113,6 +116,54 @@ func ethSfRunE(cmd *cobra.Command, args []string) error {
 	multiFilter := viper.GetStringSlice("eth-cmd-log-filter-multi")
 	addrFilters := viper.GetStringSlice("eth-cmd-log-filter-addresses")
 	sigFilters := viper.GetStringSlice("eth-cmd-log-filter-event-sigs")
+
+	if yamlEnable {
+		zlog.Info("yaml enabled, it will override all other in CMD")
+
+		// read the yaml file
+		yamlFile, err := ioutil.ReadFile("config.yaml")
+		if err != nil {
+			zlog.Error("yamlFile.Get err   #%v ", zap.Error(err))
+			zlog.Debug("use command line options instead")
+		}
+
+		// unmarshal the yaml file
+		var yamlConfig YamlConfig
+		err = yaml.Unmarshal(yamlFile, &yamlConfig)
+		if err != nil {
+			zlog.Error("Unmarshal: %v", zap.Error(err))
+			zlog.Debug("use command line options instead")
+		}
+
+		// get the target network
+		found := false
+		var outputKey string
+		zlog.Info("network: ", zap.String("network", network))
+		zlog.Info("Compare log filter: ", zap.String("kind", string(KindBlockFilter)))
+		for _, dataSource := range yamlConfig.DataSources {
+			if dataSource.Kind == KindBlockFilter && dataSource.Network == Network(network) {
+				sigFilters = dataSource.Topics
+				addrFilters = dataSource.Address
+				outputKey = dataSource.OutputKey
+				found = true
+				break
+			}
+		}
+		if found {
+			zlog.Warn("using yaml config for log filter, command line options will be ignored")
+			// update output key
+			outputFlag = outputKey
+
+		} else {
+			zlog.Warn("no yaml config found for log filter, use command line options instead")
+		}
+
+	}
+	writer, closer, err := blockWriter(inputs.Range, outputFlag, redisHost, redisPassword, redisDB)
+	if err != nil {
+		return fmt.Errorf("unable to setup writer: %w", err)
+	}
+	defer closer()
 
 	hasMultiFilter := len(multiFilter) != 0
 	hasSingleFilter := len(addrFilters) != 0 || len(sigFilters) != 0
