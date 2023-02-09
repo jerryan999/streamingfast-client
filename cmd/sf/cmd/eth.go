@@ -179,7 +179,6 @@ func ethSfRunE(cmd *cobra.Command, args []string) error {
 		if mft != nil {
 			transforms = append(transforms, mft)
 		}
-		break
 	case hasSingleFilter:
 
 		t, err := parseSingleLogFilter(addrFilters, sigFilters)
@@ -190,7 +189,6 @@ func ethSfRunE(cmd *cobra.Command, args []string) error {
 		if t != nil {
 			transforms = append(transforms, t)
 		}
-		break
 	}
 
 	multiCallFilter := viper.GetStringSlice("eth-cmd-call-filter-multi")
@@ -211,7 +209,6 @@ func ethSfRunE(cmd *cobra.Command, args []string) error {
 		if mft != nil {
 			transforms = append(transforms, mft)
 		}
-		break
 	case hasSingleCallFilter:
 		t, err := parseSingleCallToFilter(addrCallFilters, sigCallFilters)
 		if err != nil {
@@ -221,7 +218,6 @@ func ethSfRunE(cmd *cobra.Command, args []string) error {
 		if t != nil {
 			transforms = append(transforms, t)
 		}
-		break
 	}
 
 	return launchStream(ctx, streamConfig{

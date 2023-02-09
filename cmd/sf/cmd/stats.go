@@ -43,13 +43,13 @@ func (s *stats) MarshalLogObject(encoder zapcore.ObjectEncoder) error {
 }
 
 func (s *stats) duration() time.Duration {
-	return time.Now().Sub(s.startTime)
+	return time.Since(s.startTime)
 }
 
 func (s *stats) recordBlock(payloadSize int64) {
 
 	if s.timeToFirstBlock == 0 {
-		s.timeToFirstBlock = time.Now().Sub(s.startTime)
+		s.timeToFirstBlock = time.Since(s.startTime)
 	}
 
 	s.blockReceived.IncBy(1)
