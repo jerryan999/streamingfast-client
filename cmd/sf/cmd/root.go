@@ -59,9 +59,13 @@ func init() {
 	RootCmd.PersistentFlags().BoolP("insecure", "s", false, "Use TLS for the connection with the remote server but skips SSL certificate verification, this is an insecure setup")
 	RootCmd.PersistentFlags().BoolP("plaintext", "p", false, "Use plain text for the connection with the remote server, this is an insecure setup and any middleman is able to see the traffic")
 	RootCmd.PersistentFlags().BoolP("skip-auth", "a", false, "Skips the authentication")
-	RootCmd.PersistentFlags().StringP("output", "o", "-", "When set, write each block as one JSON line in the specified file, value '-' writes to standard output otherwise to a file, {range} is replaced by block range in this case")
+	RootCmd.PersistentFlags().StringP("output-key", "o", "-", "When set, write each block as one JSON line into Redis Server with this value as key, '-' writes to standard output otherwise to a file")
 	RootCmd.PersistentFlags().String("start-cursor", "", "Last cursor used to continue where you left off")
 	RootCmd.PersistentFlags().String("auth-endpoint", "", "Use an alternative authentication endpoint for retrieving access tokens.")
+	RootCmd.PersistentFlags().String("redis-host", "localhost:6379", "Redis server host, default localhost")
+	RootCmd.PersistentFlags().String("redis-password", "", "Redis server host")
+	RootCmd.PersistentFlags().Int("redis-db", 0, "Redis db, default is 0")
+
 }
 
 func Execute() {

@@ -37,9 +37,13 @@ func nearSfCmdE(cmd *cobra.Command, args []string) error {
 
 	startCursor := viper.GetString("global-start-cursor")
 	endpoint := viper.GetString("near-cmd-endpoint")
-	outputFlag := viper.GetString("global-output")
+	outputFlag := viper.GetString("global-output-key")
 	testnet := viper.GetBool("near-cmd-testnet")
 	filterAccounts := viper.GetStringSlice("near-cmd-filter-accounts")
+
+	redisHost := viper.GetString("global-redis-host")
+	redisPassword := viper.GetString("global-redis-password")
+	redisDB := viper.GetInt("global-redis-db")
 
 	transforms := []*anypb.Any{}
 	if len(filterAccounts) != 0 {
@@ -65,7 +69,7 @@ func nearSfCmdE(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("unable to resolve endpoint")
 	}
 
-	writer, closer, err := blockWriter(inputs.Range, outputFlag)
+	writer, closer, err := blockWriter(inputs.Range, outputFlag, redisHost, redisPassword, redisDB)
 	if err != nil {
 		return fmt.Errorf("unable to setup writer: %w", err)
 	}
