@@ -121,9 +121,12 @@ stream:
 			grpcCallOpts = append(grpcCallOpts, grpc.PerRPCCredentials(credentials))
 		}
 
-		forkSteps := []pbfirehose.ForkStep{pbfirehose.ForkStep_STEP_NEW}
+		// nvalid parameter for ForkSteps: this server implements firehose v2 operation and only supports [NEW,UNDO] or [IRREVERSIBLE]"}
+		forkSteps := []pbfirehose.ForkStep{}
 		if config.handleForks {
-			forkSteps = append(forkSteps, pbfirehose.ForkStep_STEP_IRREVERSIBLE, pbfirehose.ForkStep_STEP_UNDO)
+			forkSteps = append(forkSteps, pbfirehose.ForkStep_STEP_IRREVERSIBLE)
+		} else {
+			forkSteps = append(forkSteps, pbfirehose.ForkStep_STEP_NEW, pbfirehose.ForkStep_STEP_UNDO)
 		}
 
 		request := &pbfirehose.Request{
@@ -173,6 +176,7 @@ stream:
 					zap.String("cursor", cursor),
 				)
 			}
+			// fmt.Println(lastBlockRef)
 
 			now := time.Now()
 			if now.After(nextStatus) {
