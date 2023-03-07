@@ -3,8 +3,10 @@ package cmd
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"time"
 
@@ -26,14 +28,15 @@ import (
 var retryDelay = 5 * time.Second
 
 type streamConfig struct {
-	writer      io.Writer
-	stats       *stats
-	brange      BlockRange
-	filter      string
-	cursor      string
-	endpoint    string
-	handleForks bool
-	transforms  []*anypb.Any
+	writer         io.Writer
+	stats          *stats
+	brange         BlockRange
+	filter         string
+	cursor         string
+	endpoint       string
+	handleForks    bool
+	transforms     []*anypb.Any
+	checkPointFile string
 }
 
 type protocolBlockFactory func() proto.Message
@@ -176,7 +179,6 @@ stream:
 					zap.String("cursor", cursor),
 				)
 			}
-			// fmt.Println(lastBlockRef)
 
 			now := time.Now()
 			if now.After(nextStatus) {
@@ -193,6 +195,26 @@ stream:
 			}
 
 			config.stats.recordBlock(int64(proto.Size(block)))
+
+			// write new content to the file: checkPointFile, format: json
+			if config.checkPointFile != "" {
+				// open the file and write the cursor
+				var ck CheckPoint
+				ck.Cursor = cursor
+				ck.BlockNumber = lastBlockRef.Num()
+
+				ckBytes, err := json.Marshal(ck)
+				if err != nil {
+					return err
+				}
+
+				err = ioutil.WriteFile(config.checkPointFile, ckBytes, 0644)
+				if err != nil {
+					return err
+				}
+
+			}
+
 		}
 
 		time.Sleep(5 * time.Second)

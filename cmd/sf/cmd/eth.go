@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -25,6 +26,11 @@ var ethSfCmd = &cobra.Command{
 	Long:  usage,
 	Args:  cobra.MaximumNArgs(2),
 	RunE:  ethSfRunE,
+}
+
+type CheckPoint struct {
+	BlockNumber uint64 `json:"number"`
+	Cursor      string `json:"cursor"`
 }
 
 func init() {
@@ -70,6 +76,8 @@ func ethSfRunE(cmd *cobra.Command, args []string) error {
 	redisPassword := viper.GetString("global-redis-password")
 	redisDB := viper.GetInt("global-redis-db")
 	yamlEnable := viper.GetBool("global-yaml-enable")
+	checkPointFile := viper.GetString("global-check-point")
+	blockCount := viper.GetInt("global-block-count")
 
 	network := "eth"
 	switch {
@@ -159,6 +167,46 @@ func ethSfRunE(cmd *cobra.Command, args []string) error {
 		}
 
 	}
+
+	if checkPointFile != "" {
+		zlog.Info("check point enabled")
+
+		// read file and get the last block number and cursor string
+		file, err := os.Open(checkPointFile)
+		// 如果ck file不存在的话，就创建一个
+		if err != nil {
+			zlog.Info("check point file not found, create one")
+			file, err = os.Create(checkPointFile)
+			if err != nil {
+				zlog.Error("create check point file error: ", zap.Error(err))
+			}
+		} else {
+			// read the json content
+			data, err := ioutil.ReadAll(file)
+			if err != nil {
+				zlog.Error("read check point file error: ", zap.Error(err))
+			}
+
+			// unmarshal the json content
+			var ck CheckPoint
+			err = json.Unmarshal(data, &ck)
+			if err != nil {
+				zlog.Error("unmarshal check point file error: ", zap.Error(err))
+			} else {
+				// update the block number
+				inputs.Range.Start = int64(ck.BlockNumber)
+				inputs.Range.End = uint64(ck.BlockNumber) + uint64(blockCount)
+				zlog.Info("check point block number from start to end: ", zap.Int64("start", inputs.Range.Start), zap.Uint64("end", inputs.Range.End))
+
+				// update cursor
+				startCursor = ck.Cursor
+				zlog.Info("cursor updated")
+			}
+		}
+		defer file.Close()
+
+	}
+
 	writer, closer, err := blockWriter(inputs.Range, outputFlag, redisHost, redisPassword, redisDB)
 	if err != nil {
 		return fmt.Errorf("unable to setup writer: %w", err)
@@ -221,13 +269,14 @@ func ethSfRunE(cmd *cobra.Command, args []string) error {
 	}
 
 	return launchStream(ctx, streamConfig{
-		writer:      writer,
-		stats:       newStats(),
-		brange:      inputs.Range,
-		cursor:      startCursor,
-		endpoint:    endpoint,
-		handleForks: viper.GetBool("global-handle-forks"),
-		transforms:  transforms,
+		writer:         writer,
+		stats:          newStats(),
+		brange:         inputs.Range,
+		cursor:         startCursor,
+		endpoint:       endpoint,
+		handleForks:    viper.GetBool("global-handle-forks"),
+		checkPointFile: viper.GetString("global-check-point"),
+		transforms:     transforms,
 	},
 		func() proto.Message {
 			return &pbcodec.Block{}

@@ -65,6 +65,8 @@ func init() {
 	RootCmd.PersistentFlags().String("redis-host", "localhost:6379", "Redis server host, default localhost")
 	RootCmd.PersistentFlags().String("redis-password", "", "Redis server host")
 	RootCmd.PersistentFlags().Int("redis-db", 0, "Redis db, default is 0")
+	RootCmd.PersistentFlags().String("check-point", "", "File to store the last cursor, if not specified, the cursor will be stored in memory")
+	RootCmd.PersistentFlags().Int("block-count", 100, "Number of blocks to stream before exiting")
 	RootCmd.PersistentFlags().Bool("yaml-enable", false, "Enable YAML parameters as input for the command, when enabled, it will overwrite the cmmmand line parameters")
 
 }

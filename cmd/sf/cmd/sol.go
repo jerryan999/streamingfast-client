@@ -63,12 +63,13 @@ func solSfCmdE(cmd *cobra.Command, args []string) error {
 	defer closer()
 
 	return launchStream(ctx, streamConfig{
-		writer:      writer,
-		stats:       newStats(),
-		brange:      inputs.Range,
-		cursor:      startCursor,
-		endpoint:    endpoint,
-		handleForks: viper.GetBool("global-handle-forks"),
+		writer:         writer,
+		stats:          newStats(),
+		brange:         inputs.Range,
+		cursor:         startCursor,
+		endpoint:       endpoint,
+		handleForks:    viper.GetBool("global-handle-forks"),
+		checkPointFile: viper.GetString("global-check-point"),
 	},
 		func() proto.Message {
 			return &pbcodec.Block{}

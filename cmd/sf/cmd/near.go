@@ -76,13 +76,14 @@ func nearSfCmdE(cmd *cobra.Command, args []string) error {
 	defer closer()
 
 	return launchStream(ctx, streamConfig{
-		writer:      writer,
-		stats:       newStats(),
-		brange:      inputs.Range,
-		cursor:      startCursor,
-		endpoint:    endpoint,
-		handleForks: viper.GetBool("global-handle-forks"),
-		transforms:  transforms,
+		writer:         writer,
+		stats:          newStats(),
+		brange:         inputs.Range,
+		cursor:         startCursor,
+		endpoint:       endpoint,
+		handleForks:    viper.GetBool("global-handle-forks"),
+		checkPointFile: viper.GetString("global-check-point"),
+		transforms:     transforms,
 	},
 		func() proto.Message {
 			return &pbcodec.Block{}
