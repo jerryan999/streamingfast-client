@@ -75,7 +75,7 @@ func ethSfRunE(cmd *cobra.Command, args []string) error {
 	redisHost := viper.GetString("global-redis-host")
 	redisPassword := viper.GetString("global-redis-password")
 	redisDB := viper.GetInt("global-redis-db")
-	yamlEnable := viper.GetBool("global-yaml-enable")
+	yamlEnable := viper.GetString("global-yaml-enable")
 	checkPointFile := viper.GetString("global-check-point")
 	blockCount := viper.GetInt("global-block-count")
 
@@ -125,11 +125,11 @@ func ethSfRunE(cmd *cobra.Command, args []string) error {
 	addrFilters := viper.GetStringSlice("eth-cmd-log-filter-addresses")
 	sigFilters := viper.GetStringSlice("eth-cmd-log-filter-event-sigs")
 
-	if yamlEnable {
+	if yamlEnable != "" {
 		zlog.Info("yaml enabled, it will override all other in CMD")
 
 		// read the yaml file
-		yamlFile, err := ioutil.ReadFile("config.yaml")
+		yamlFile, err := ioutil.ReadFile(yamlEnable)
 		if err != nil {
 			zlog.Error("yamlFile.Get err   #%v ", zap.Error(err))
 			zlog.Debug("use command line options instead")

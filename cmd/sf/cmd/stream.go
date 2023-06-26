@@ -13,7 +13,7 @@ import (
 	"github.com/spf13/viper"
 	dfuse "github.com/streamingfast/client-go"
 	"github.com/streamingfast/dgrpc"
-	pbfirehose "github.com/streamingfast/pbgo/sf/firehose/v1"
+	pbfirehose "github.com/streamingfast/pbgo/sf/firehose/v2"
 	sf "github.com/streamingfast/streamingfast-client"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
@@ -84,7 +84,6 @@ func newStream(endpoint string) (stream pbfirehose.StreamClient, client dfuse.Cl
 		zlog.Debug("Configuring transport to use an insecure TLS connection (skips certificate verification)")
 		dialOptions = []grpc.DialOption{grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{InsecureSkipVerify: true}))}
 	}
-
 	conn, err := dgrpc.NewExternalClient(endpoint, dialOptions...)
 	if err != nil {
 		return nil, nil, false, fmt.Errorf("unable to create external gRPC client")
@@ -124,24 +123,14 @@ stream:
 			grpcCallOpts = append(grpcCallOpts, grpc.PerRPCCredentials(credentials))
 		}
 
-		// nvalid parameter for ForkSteps: this server implements firehose v2 operation and only supports [NEW,UNDO] or [IRREVERSIBLE]"}
-		forkSteps := []pbfirehose.ForkStep{}
-		if config.handleForks {
-			forkSteps = append(forkSteps, pbfirehose.ForkStep_STEP_IRREVERSIBLE)
-		} else {
-			forkSteps = append(forkSteps, pbfirehose.ForkStep_STEP_NEW, pbfirehose.ForkStep_STEP_UNDO)
-		}
-
 		request := &pbfirehose.Request{
-			StartBlockNum:     config.brange.Start,
-			StartCursor:       config.cursor,
-			StopBlockNum:      config.brange.End,
-			ForkSteps:         forkSteps,
-			IncludeFilterExpr: config.filter,
-			Transforms:        config.transforms,
+			StartBlockNum: config.brange.Start,
+			Cursor:        config.cursor,
+			StopBlockNum:  config.brange.End,
+			Transforms:    config.transforms,
 		}
 
-		zlog.Debug("Initiating stream with remote endpoint", zap.String("endpoint", config.endpoint))
+		zlog.Info("Initiating stream with remote endpoint", zap.String("endpoint", config.endpoint))
 		stream, err := firehoseClient.Blocks(context.Background(), request, grpcCallOpts...)
 		if err != nil {
 			return fmt.Errorf("unable to start blocks stream: %w", err)
