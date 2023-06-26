@@ -11,7 +11,7 @@ import (
 	"github.com/go-redis/redis"
 	"github.com/paulbellamy/ratecounter"
 	"github.com/streamingfast/jsonpb"
-	pbfirehose "github.com/streamingfast/pbgo/sf/firehose/v1"
+	pbfirehose "github.com/streamingfast/pbgo/sf/firehose/v2"
 	sf "github.com/streamingfast/streamingfast-client"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
